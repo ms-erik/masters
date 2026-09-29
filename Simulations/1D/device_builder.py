@@ -36,15 +36,15 @@ class DeviceParams:
         v_j = V_meV * EV_TO_JOULE * 1e-3
         m_star = m_eff * m0
 
-        k = np.sqrt(2 * m_star * (e_j - v_j)) / hbar
+        k = np.sqrt(2 * m_star * complex(e_j - v_j)) / hbar
         return k
 
     def compute_thickness(self):
         k_high = self.calculate_k(self.targetEnergy_meV, self.v_high, self.m_high)
         k_guide = self.calculate_k(self.targetEnergy_meV, self.v_guide, self.m_guide)
 
-        d_high = (0.5 * np.pi) / k_high
-        d_guide = (2 * np.pi) / k_guide
+        d_high = np.real((0.5 * np.pi) / k_high)
+        d_guide = np.real((2 * np.pi) / k_guide)
 
         self.d_high_nm = d_high * m_to_nm
         self.d_guide_nm = d_guide * m_to_nm

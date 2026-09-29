@@ -8,6 +8,7 @@ Temperature_K = 4.2 # in kelvin
 E_F = 171.6         # Fermi level
 V_bias = 1          # 1meV
 K_BT = const.k
+HBAR2_M0 = 76.2
 
 EV_TO_JOULE = q
 

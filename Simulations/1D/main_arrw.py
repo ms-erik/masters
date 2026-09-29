@@ -1,9 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.ndimage as ndimage
 from device_builder import DeviceParams
 from tm_transport import identity_scatter, interface_scatter, propagation_scatter, star_product
 from materials import get_material_properties
-from laundauer import calculate_current, fermi_dirac
+from landauer import calculate_current, fermi_dirac
 from constants import E_F, V_bias, Temperature_K
 
 def calculate_transmission(V_base, m_eff, transmission):
@@ -110,6 +111,7 @@ dz = 0.1 # nm
 z_max = boundaries[-1]
 z = np.arange(0, z_max, dz)
 V_base = np.zeros_like(z)
+V_base = V_base.astype(complex)
 m_eff = np.zeros_like(z)
 delta_V_NV = 0.09 * np.exp(-z / 12.0)
 
@@ -118,18 +120,31 @@ layers_indices = np.searchsorted(boundaries, z)
 
 eletron_energy_meV = 150
 
+
+
 for i in range(len(z)):
     idx = layers_indices[i]
     V_base[i] = potentials[idx]
     m_eff[i] = masses[idx]
 
+## add noise to the system
+white_noise = np.random.randn(len(z))
+smooth_noise = ndimage.gaussian_filter(white_noise, sigma=5.0)
+V_disorder = 1.5 * (smooth_noise / np.std(smooth_noise))
+
+V_base = V_base + V_disorder
+
+# add inelastic scattering rate
+Gamma_meV = 0.1
+V_base = V_base -1j * (Gamma_meV / 2.0)
 
 V_total_A = V_base + delta_V_NV
 V_total_B = V_base - delta_V_NV
 
+
 # energy sweep
-energies_meV = np.linspace(110, 190, 400)
-#energies_meV = np.linspace(172.0, 172.6, 1000)
+#energies_meV = np.linspace(110, 190, 400)
+energies_meV = np.linspace(170.0, 173.5, 400)
 transmission_a = []
 transmission_b = []
 
@@ -147,14 +162,51 @@ integrando_b = transmission_b * janela_fermi
 I_A = calculate_current(energies_meV, transmission_a)
 I_B = calculate_current(energies_meV, transmission_b)
 
-V_gates = np.linspace(-2, 2, 50)
-for i in range(len(V_gates)):
-    V_base_atual = V_base
-plt.figure(figsize=(10,4))
-plt.plot(energies_meV, integrando_a, color='blue', label='Spin A (NV- extra)')
-plt.plot(energies_meV, integrando_a, color='red', label='Spin B (NV- menor)')
+# alternating the gate voltage
+V_gates = np.linspace(-3, 3, 60)
+currents_A = []
+currents_B = []
+
+for Vg in V_gates:
+    print(f"Calculando Gate: {Vg:.2f} meV...")
+
+    # move the potential based on the gate voltage
+    v_base_gate = V_base - Vg
+
+    # Add nv center perturbation
+    V_total_A = v_base_gate + delta_V_NV
+    V_total_B = v_base_gate - delta_V_NV
+
+    trans_a = []
+    trans_b = []
+    
+    calculate_transmission(V_total_A, m_eff, trans_a)
+    calculate_transmission(V_total_B, m_eff, trans_b)
+
+    # calculate laundauer current
+    I_A = calculate_current(energies_meV, np.array(trans_a))
+    I_B = calculate_current(energies_meV, np.array(trans_b))
+
+    currents_A.append(I_A)
+    currents_B.append(I_B)
+
+# Current graph
+plt.figure(figsize=(8,5))
+plt.plot(V_gates, currents_A, color='blue', label='Spin A (NV- extra)')
+plt.plot(V_gates, currents_B, color='red', label='Spin B (NV- menor)')
+plt.title("Sensor de Spin: corrente vs gate voltage")
+plt.xlabel("V_gate (meV)")
+plt.ylabel("Corrente (Amperes)")
 plt.legend()
-plt.title("Base Potential Profile")
-plt.xlabel(" current ")
-plt.ylabel("Energy (meV)")
 plt.show()
+
+
+######################################################################
+#plt.figure(figsize=(10,4))
+#plt.plot(energies_meV, integrando_a, color='blue', label='Spin A (NV- extra)')
+#plt.plot(energies_meV, integrando_a, color='red', label='Spin B (NV- menor)')
+#plt.legend()
+#plt.title("Base Potential Profile")
+#plt.xlabel(" current ")
+#plt.ylabel("Energy (meV)")
+#plt.show()
