@@ -106,6 +106,11 @@ masses.append(params.m_high)
 # do the cumulative sum of the thickness
 boundaries = np.cumsum(thickness)
 
+# it gives the location of each layer, for example:
+# t1 = 4nm, t2 = 7nm, t3 = 2nm, t4 = 5nm
+#boundaries = [ 4, 6, 14, 16, 21]
+# so we can know the exact place of the interfaces
+
 # create grid
 dz = 0.1 # nm
 z_max = boundaries[-1]
@@ -116,6 +121,7 @@ m_eff = np.zeros_like(z)
 delta_V_NV = 0.09 * np.exp(-z / 12.0)
 
 # mapping
+# basically where each point z should be placed in the boundaries vector
 layers_indices = np.searchsorted(boundaries, z)
 
 eletron_energy_meV = 150
